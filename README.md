@@ -30,6 +30,10 @@ TARGET_GROUPS=["114514"]
 
 配置完成后直接运行 `app.py` 即可
 
+## Screenshot
+
+![](https://cdn.bili33.top/gh/GamerNoTitle/A1CTF-Journalist/img/QQ_KaRwnpc54v.png)
+
 ## Credit
 
 - A1CTF：https://github.com/carbofish/A1CTF
