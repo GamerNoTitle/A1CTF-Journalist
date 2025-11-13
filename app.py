@@ -22,14 +22,14 @@ TARGET_GROUPS = json.loads(os.getenv("TARGET_GROUPS"))  # type: ignore
 
 GLOBAL_BOT_CLIENT = httpx.AsyncClient(
     headers={
-        "User-Agent": "Luminoria-ADCTF-Bot/1.0",
+        "User-Agent": "A1CTF-Journalist/1.0",
         "Authorization": f"Bearer {NC_TOKEN}",
     }
 )
 
 GLOBAL_PLATFORM_CLIENT = httpx.AsyncClient(
     headers={
-        "User-Agent": "Luminoria-ADCTF-Platform-Listener/1.0",
+        "User-Agent": "A1CTF-Journalist/1.0",
         "Cookie": PLATFORM_COOKIE,  # type: ignore
     }
 )
@@ -150,7 +150,7 @@ async def launcher():
         print("Napcat service is not alive.")
         return
     else:
-        print("Napcat service is alive. Start listening ADCTF notices...")
+        print("Napcat service is alive. Start listening A1CTF notices...")
 
     while True:
         now = datetime.now()
