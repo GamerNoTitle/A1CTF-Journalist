@@ -195,7 +195,7 @@ async def login_platform():
     """
     登录 A1CTF 平台，并更新 Cookie 配置
     """
-    if not PLATFORM_COOKIE and PLATFORM_USERNAME and PLATFORM_PASSWORD:
+    if PLATFORM_USERNAME and PLATFORM_PASSWORD:
         print("Logging into Platform...")
         resp = await GLOBAL_BOT_CLIENT.post(f"{PLATFORM_URL}/api/cap/challenge")
         resp.raise_for_status()
@@ -239,6 +239,8 @@ async def login_platform():
                     f.write(f"PLATFORM_COOKIE=a1token={login_response.token}\n")
                 else:
                     f.write(line)
+    else:
+        raise RuntimeError("Platform username or password not set in environment.")
 
 
 async def launcher():
