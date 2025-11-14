@@ -1,6 +1,7 @@
 import hashlib
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from utils.logger import log
 
 
 def fnv1a(data_str: str) -> int:
@@ -89,6 +90,6 @@ def solve_challenge(challenge_token: str, c: int, s: int, d: int) -> list[int]:
                 nonce = future.result()
                 results[index] = nonce
             except Exception as exc:
-                print(f"Challenge {index} generated an exception: {exc}")
+                log(f"Challenge {index} generated an exception: {exc}")
 
     return results
