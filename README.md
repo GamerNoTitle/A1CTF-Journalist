@@ -17,6 +17,8 @@ NAPCAT_TOKEN=YOUR_NAPCAT_TOKEN_HERE
 
 PLATFORM_URL=YOUR_PLATFORM_URL_HERE
 PLATFORM_LISTENING_GAME_ID=1
+PLATFORM_USERNAME=YOUR_USERNAME_HERE
+PLATFORM_PASSWORD=YOUR_PASSWORD_HERE
 PLATFORM_COOKIE=a1token=YOUR_COOKIE_HERE
 
 TARGET_GROUPS=["114514"]
@@ -26,7 +28,9 @@ TARGET_GROUPS=["114514"]
 - `NAPCAT_TOKEN`：上述服务器对应的 token，新建服务器的时候给的
 - `PLATFORM_URL`：A1CTF 平台的 URL，例如 `https://ctf.bili33.top`
 - `PLATFORM_LISTENING_GAME_ID`：监听的比赛 id，在对应比赛的地址栏有的，例如地址为 `https://ctf.bili33.top/games/3/info`，那么 id 就是 `3`
-- `PLATFORM_COOKIE`：你的账户 Cookie，用 Devtool 抓，该账户必须为监听目标比赛的参赛选手或者是平台管理员
+- `PLATFORM_USERNAME`：平台登录用户名/邮箱
+- `PLATFORM_PASSWORD`：平台登录密码
+- `PLATFORM_COOKIE`：你的账户 Cookie，可以用 Devtool 抓，该账户必须为监听目标比赛的参赛选手或者是平台管理员（如果填写了用户名和密码则会尝试自动更新）
 
 配置完成后直接运行 `app.py` 即可
 
