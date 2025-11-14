@@ -267,8 +267,8 @@ async def launcher():
         unread_notices = check_unread_notice(notices)
         if unread_notices:
             await send_unread_notices_to_groups(unread_notices)
-        await asyncio.sleep(5)  # 每5秒检查一次
         log("Sleep for 5 seconds...")
+        await asyncio.sleep(5)  # 每5秒检查一次
 
 
 if __name__ == "__main__":
