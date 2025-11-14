@@ -10,3 +10,4 @@ wheels/
 .venv
 read_notices.txt
 .env
+logs/
