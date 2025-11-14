@@ -27,6 +27,32 @@ class Notice(BaseModel):
     def __repr__(self) -> str:
         return f"Notice(notice_id={self.notice_id}, notice_category={self.notice_category}, created_at={self.created_at}, data={self.data})"
 
+
 class NoticeResponse(BaseModel):
     code: int
     data: list[Notice]
+
+
+class CaptchaChallenge(BaseModel):
+    c: int
+    d: int
+    s: int
+
+
+class CaptchaResponse(BaseModel):
+    challenge: CaptchaChallenge
+    expires: int
+    token: str
+
+
+class CaptchaSubmitResponse(BaseModel):
+    expires: int
+    success: bool
+    token: str | None = Field(None)
+
+
+class LoginResponse(BaseModel):
+    code: int
+    expire: str
+    token: str | None = Field(None)
+    message: str | None = Field(None)

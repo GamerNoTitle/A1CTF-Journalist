@@ -6,7 +6,15 @@ import json
 from datetime import datetime
 
 from models.napcat import SendGroupMsgResponse, GetStatusResponse
-from models.platform import Notice, NoticeResponse
+from models.platform import (
+    Notice,
+    NoticeResponse,
+    CaptchaResponse,
+    CaptchaSubmitResponse,
+    LoginResponse,
+)
+
+from utils.captcha import solve_challenge
 
 ENV = dotenv.load_dotenv()
 
@@ -16,6 +24,8 @@ PLATFORM_LISTENING_GAME_ID = os.getenv("PLATFORM_LISTENING_GAME_ID")
 PLATFORM_NOTICE_URL = f"{PLATFORM_URL}/api/game/{PLATFORM_LISTENING_GAME_ID}/notices"
 
 NC_TOKEN = os.getenv("NAPCAT_TOKEN")
+PLATFORM_USERNAME = os.getenv("PLATFORM_USERNAME")
+PLATFORM_PASSWORD = os.getenv("PLATFORM_PASSWORD")
 PLATFORM_COOKIE = os.getenv("PLATFORM_COOKIE")
 
 TARGET_GROUPS = json.loads(os.getenv("TARGET_GROUPS"))  # type: ignore
@@ -45,9 +55,7 @@ async def send_group_message(group_id: str, message: str) -> bool:
     _url = f"{NAPCAT_URL}/send_group_msg"
     payload = {
         "group_id": group_id,
-        "message": [
-            {"type": "text", "data": {"text": message}}
-        ],
+        "message": [{"type": "text", "data": {"text": message}}],
     }
     try:
         resp = await GLOBAL_BOT_CLIENT.post(_url, json=payload)
@@ -56,12 +64,14 @@ async def send_group_message(group_id: str, message: str) -> bool:
         data = SendGroupMsgResponse.model_validate(resp.json())
         if data.status != "ok":
             import traceback
+
             traceback.print_exc()
             print(f"Failed to send group message: {data.data.errMsg}")
             return False
         return True
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         print(f"Failed to send group message: {e}")
         return False
@@ -89,6 +99,24 @@ async def fetch_notices() -> list[Notice]:
     """
     try:
         resp = await GLOBAL_PLATFORM_CLIENT.get(PLATFORM_NOTICE_URL)
+        match resp.status_code:
+            case 403:
+                print(
+                    "No permission to access notices. Probably the game has not started yet."
+                )
+                return []
+            case 401:
+                await login_platform()
+                if not await check_platform_cookie_valid():
+                    raise RuntimeError(
+                        "Unauthorized access to notices and re-login failed. Please check your credentials."
+                    )
+                return []
+            case 404:
+                print(
+                    "The game cannot be found. Please check PLATFORM_LISTENING_GAME_ID."
+                )
+                return []
         resp.raise_for_status()
         data = NoticeResponse.model_validate(resp.json())
         return data.data
@@ -144,6 +172,75 @@ def mark_notice_as_read(notice_id: int) -> bool:
     return True
 
 
+async def check_platform_cookie_valid() -> bool:
+    """
+    检查 Platform Cookie 是否有效
+    :return: Cookie 是否有效
+    """
+    print("Checking Platform cookie validity...")
+    try:
+        resp = await GLOBAL_PLATFORM_CLIENT.get(f"{PLATFORM_URL}/api/account/profile")
+        resp.raise_for_status()
+        if resp.status_code == 200:
+            print("Platform cookie is valid.")
+            return True
+        print("Platform cookie is invalid.")
+        return False
+    except Exception as e:
+        print(f"Error while checking Platform cookie validity: {e}")
+        return False
+
+
+async def login_platform():
+    """
+    登录 A1CTF 平台，并更新 Cookie 配置
+    """
+    if not PLATFORM_COOKIE and PLATFORM_USERNAME and PLATFORM_PASSWORD:
+        print("Logging into Platform...")
+        resp = await GLOBAL_BOT_CLIENT.post(f"{PLATFORM_URL}/api/cap/challenge")
+        resp.raise_for_status()
+        captcha_response = CaptchaResponse.model_validate(resp.json())
+        solutions = solve_challenge(
+            captcha_response.token,
+            captcha_response.challenge.c,
+            captcha_response.challenge.s,
+            captcha_response.challenge.d,
+        )
+        print(f"Solved CAPTCHA challenges: {solutions}")
+        resp = await GLOBAL_BOT_CLIENT.post(
+            f"{PLATFORM_URL}/api/cap/redeem",
+            json={"token": captcha_response.token, "solutions": solutions},
+        )
+        resp.raise_for_status()
+        print("Submitted CAPTCHA solutions and redeemed token.")
+        captcha_submit_response = CaptchaSubmitResponse.model_validate(resp.json())
+        if not captcha_submit_response.success or not captcha_submit_response.token:
+            raise RuntimeError("Failed to solve CAPTCHA and login to Platform")
+        resp = await GLOBAL_PLATFORM_CLIENT.post(
+            f"{PLATFORM_URL}/api/auth/login",
+            json={
+                "username": PLATFORM_USERNAME,
+                "password": PLATFORM_PASSWORD,
+                "captcha": captcha_submit_response.token,
+            },
+        )
+        resp.raise_for_status()
+        print("Logged into Platform successfully.")
+        login_response = LoginResponse.model_validate(resp.json())
+        if login_response.code != 200:
+            raise RuntimeError(f"Failed to login to Platform: {login_response.message}")
+        GLOBAL_PLATFORM_CLIENT.headers["Cookie"] = f"a1token={login_response.token}"
+        # Set new cookie to .env and replace old one
+        with open(".env", "r") as f:
+            lines = f.readlines()
+        with open(".env", "w") as f:
+            for line in lines:
+                if line.startswith("PLATFORM_COOKIE="):
+                    f.write(f"PLATFORM_COOKIE=a1token={login_response.token}\n")
+                else:
+                    f.write(line)
+
+
 async def launcher():
     alive = await check_alive()
     if not alive:
@@ -151,6 +248,14 @@ async def launcher():
         return
     else:
         print("Napcat service is alive. Start listening A1CTF notices...")
+
+    if not await check_platform_cookie_valid():
+        await login_platform()
+        if not await check_platform_cookie_valid():
+            print("Failed to login to Platform. Exiting...")
+            return
+        else:
+            print("Successfully logged into Platform.")
 
     while True:
         now = datetime.now()
