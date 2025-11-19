@@ -107,6 +107,7 @@ async def fetch_notices() -> list[Notice]:
                 )
                 return []
             case 401:
+                log("Unauthorized access to notices. Attempting to re-login...")
                 await login_platform()
                 if not await check_platform_cookie_valid():
                     raise RuntimeError(
