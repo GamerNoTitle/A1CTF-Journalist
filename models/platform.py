@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Literal, Optional
 from datetime import datetime, timezone
 
 
@@ -10,6 +10,7 @@ class Notice(BaseModel):
         "FirstBlood", "SecondBlood", "ThirdBlood", "NewAnnouncement", "NewHint"
     ]
     notice_id: int
+    category: str | None = Field(None, description="challenge_category")
 
     def __str__(self) -> str:
         def _local_fmt(dt: datetime) -> str:
@@ -21,11 +22,11 @@ class Notice(BaseModel):
         ts = _local_fmt(self.created_at)
         match self.notice_category:
             case "FirstBlood":
-                return f"🥇 队伍「{self.data[0]}」斩获了题目「{self.data[1]}」的第一滴血！\nTime: {ts}"
+                return f"🥇 队伍 {self.data[0]} 斩获了{f' {self.category} 方向' if self.category else ''}题目 {self.data[1]} 的第一滴血！\nTime: {ts}"
             case "SecondBlood":
-                return f"🥈 队伍「{self.data[0]}」获得了题目「{self.data[1]}」的第二滴血！\nTime: {ts}"
+                return f"🥈 队伍 {self.data[0]} 斩获了{f' {self.category} 方向' if self.category else ''}题目 {self.data[1]} 的第二滴血！\nTime: {ts}"
             case "ThirdBlood":
-                return f"🥉 队伍「{self.data[0]}」获得了题目「{self.data[1]}」的第三滴血！\nTime: {ts}"
+                return f"🥉 队伍 {self.data[0]} 斩获了{f' {self.category} 方向' if self.category else ''}题目 {self.data[1]} 的第三滴血！\nTime: {ts}"
             case "NewAnnouncement":
                 return f"📢 新公告发布：\n标题: {'\n'.join(self.data)}\nTime: {ts}"
             case "NewHint":
@@ -63,3 +64,20 @@ class LoginResponse(BaseModel):
     expire: str
     token: str | None = Field(None)
     message: str | None = Field(None)
+
+class Challenges(BaseModel):
+    challenge_id: int
+    challenge_name: str
+    total_score: int
+    cur_score: int
+    solve_count: int
+    category: str
+    visible: bool
+    belong_stage: Optional[str] = Field("")
+    
+class ChallengesData(BaseModel):
+    challenges: list[Challenges]
+    
+class ChallengeResponse(BaseModel):
+    code: int
+    data: ChallengesData

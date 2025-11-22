@@ -13,6 +13,8 @@ from models.platform import (
     CaptchaResponse,
     CaptchaSubmitResponse,
     LoginResponse,
+    Challenges,
+    ChallengeResponse,
 )
 
 from utils.captcha import solve_challenge
@@ -23,6 +25,7 @@ NAPCAT_URL = os.getenv("NAPCAT_URL")
 PLATFORM_URL = os.getenv("PLATFORM_URL")
 PLATFORM_LISTENING_GAME_ID = os.getenv("PLATFORM_LISTENING_GAME_ID")
 PLATFORM_NOTICE_URL = f"{PLATFORM_URL}/api/game/{PLATFORM_LISTENING_GAME_ID}/notices"
+PLATFORM_CHALLENGES_URL = f"{PLATFORM_URL}/api/game/{PLATFORM_LISTENING_GAME_ID}/challenges"
 
 NC_TOKEN = os.getenv("NAPCAT_TOKEN")
 PLATFORM_USERNAME = os.getenv("PLATFORM_USERNAME")
@@ -45,6 +48,7 @@ GLOBAL_PLATFORM_CLIENT = httpx.AsyncClient(
     }
 )
 
+challenges: list[Challenges] = []
 
 async def send_group_message(group_id: str, message: str) -> bool:
     """
@@ -65,7 +69,6 @@ async def send_group_message(group_id: str, message: str) -> bool:
         data = SendGroupMsgResponse.model_validate(resp.json())
         if data.status != "ok":
             import traceback
-
             traceback.print_exc()
             log(f"Failed to send group message: {data.data.errMsg}")
             return False
@@ -126,6 +129,24 @@ async def fetch_notices() -> list[Notice]:
         log(f"Failed to fetch notices: {e}")
         return []
 
+async def sync_challenges() -> bool:
+    """
+    同步平台上的挑战列表
+    :return: 同步是否成功
+    """
+    try:
+        resp = await GLOBAL_PLATFORM_CLIENT.get(PLATFORM_CHALLENGES_URL)
+        resp.raise_for_status()
+        data = ChallengeResponse.model_validate(resp.json())
+        global challenges
+        challenges = data.data.challenges
+        log("Successfully synced challenges on Platform.")
+        return True
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        log(f"Failed to sync challenges: {e}")
+        return False
 
 def check_unread_notice(notices: list[Notice]) -> list[Notice]:
     """
@@ -150,6 +171,14 @@ async def send_unread_notices_to_groups(unread_notices: list[Notice]) -> None:
     :param unread_notices: 未读公告列表
     """
     for notice in unread_notices:
+        if notice.notice_category in ["FirstBlood", "SecondBlood", "ThirdBlood"]:
+            # Check if the challenge is in the synced challenges list
+            challenge_name = notice.data[1]
+            matched_challenge = next((c for c in challenges if c.challenge_name == challenge_name), None)
+            if matched_challenge:
+                notice.category = matched_challenge.category
+            else:
+                notice.category = ""
         message = str(notice)
         success_flag = []
         for group_id in TARGET_GROUPS:
@@ -262,11 +291,14 @@ async def launcher():
                 log("Successfully logged into Platform.")
 
     while True:
-        now = datetime.now()
         log("Checking for new notices...")
         notices = await fetch_notices()
         unread_notices = check_unread_notice(notices)
         if unread_notices:
+            log(f"Found {len(unread_notices)} unread notices.")
+            log("Syncing challenges...")
+            await sync_challenges()
+            log("Sending unread notices to target groups...")
             await send_unread_notices_to_groups(unread_notices)
         log("Sleep for 5 seconds...")
         await asyncio.sleep(5)  # 每5秒检查一次
