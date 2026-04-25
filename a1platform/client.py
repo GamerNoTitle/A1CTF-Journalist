@@ -1,6 +1,7 @@
 from httpx import AsyncClient
 
 from platform.exception import (
+    PlatformException,
     CredentialsNotSatisfiedException,
     CredentialsNotSetException,
     CaptchaFailedToSolveException,
@@ -66,6 +67,19 @@ class PlatformClient:
     def login_url(self) -> str:
         return "/api/auth/login"
 
+    async def match_status(self, status_code: int):
+        match status_code:
+            case 200:
+                return
+            case 403:
+                raise NoPermissionException("You do not have permission to access this resource.")
+            case 404:
+                raise GameNotFoundException("The specified game was not found. Please check the game ID.")
+            case 401:
+                raise UnauthorizedAccessException("You are not authorized to access this resource.")
+            case _:
+                raise PlatformException(f"Unexpected response code: {status_code}")
+
     async def _check_cookie_valid(self) -> bool:
         resp = await self.client.get(self.profile_url)
         resp.raise_for_status()
@@ -111,7 +125,7 @@ class PlatformClient:
         if not await self._check_cookie_valid():
             await self._login_platform()
         resp = await self.client.get(self.challenge_url)
-        resp.raise_for_status()
+        await self.match_status(resp.status_code)
         data = ChallengeResponse.model_validate_json(resp.content)
         self.challenges = data.data.challenges
 
@@ -120,11 +134,5 @@ class PlatformClient:
             await self._login_platform()
         resp = await self.client.get(self.notice_url)
         notices = NoticeResponse.model_validate_json(resp.content)
-        match notices.code:
-            case 403:
-                raise NoPermissionException
-            case 404:
-                raise GameNotFoundException
-            case 401:
-                raise UnauthorizedAccessException
+        await self.match_status(notices.code)
         return notices.data

@@ -11,3 +11,6 @@ wheels/
 read_notices.txt
 .env
 logs/
+
+# Configs
+*.json
