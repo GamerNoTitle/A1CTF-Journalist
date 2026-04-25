@@ -1,6 +1,6 @@
 from httpx import AsyncClient
 
-from platform.exception import (
+from a1platform.exception import (
     PlatformException,
     CredentialsNotSatisfiedException,
     CredentialsNotSetException,
@@ -10,14 +10,14 @@ from platform.exception import (
     NoPermissionException,
     UnauthorizedAccessException,
 )
-from platform.models import (
+from a1platform.models import (
     CaptchaResponse,
     CaptchaSubmitResponse,
     LoginResponse,
     ChallengeResponse,
     NoticeResponse,
 )
-from platform.models import Challenge as A1CTF_Challenges
+from a1platform.models import Challenge as A1CTF_Challenges
 from utils.captcha import solve_challenge
 
 
@@ -31,7 +31,7 @@ class PlatformClient:
         cookie: str | None = None,
     ):
         if not all([username, password]) or cookie:
-            raise CredentialsNotSatisfiedException
+            raise CredentialsNotSatisfiedException("Either username and password or cookie must be provided, but not both.")
         if all([username, password]):
             self.credential_set = True
         else:
@@ -89,7 +89,7 @@ class PlatformClient:
 
     async def _login_platform(self):
         if not self.credential_set:
-            raise CredentialsNotSetException
+            raise CredentialsNotSetException("Credentials are not set.")
         resp = await self.client.post(self.captcha_challenge_url)
         resp.raise_for_status()
         captcha_response = CaptchaResponse.model_validate_json(resp.content)
@@ -106,7 +106,7 @@ class PlatformClient:
         resp.raise_for_status()
         submit_response = CaptchaSubmitResponse.model_validate_json(resp.content)
         if not submit_response.success or not submit_response.token:
-            raise CaptchaFailedToSolveException
+            raise CaptchaFailedToSolveException("Failed to solve captcha.")
         resp = await self.client.post(
             self.login_url,
             json={
@@ -118,8 +118,8 @@ class PlatformClient:
         resp.raise_for_status()
         login_response = LoginResponse.model_validate_json(resp.content)
         if login_response.code != 200:
-            raise LoginFailedException
-        self.client.cookies.update({"a1token", login_response.token})  # type: ignore
+            raise LoginFailedException(f"Login failed: {login_response.message}")
+        self.client.cookies.update({"a1token": login_response.token})  # type: ignore
 
     async def _sync_challenges(self):
         if not await self._check_cookie_valid():

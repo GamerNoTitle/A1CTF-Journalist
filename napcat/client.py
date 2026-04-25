@@ -25,7 +25,7 @@ class NapcatClient:
         :param message: 消息内容，支持多条消息合并发送
         """
         if self.is_closed:
-            raise ClientIsClosedException
+            raise ClientIsClosedException("Client is closed.")
         payload: dict[str, Any] = {
             "group_id": group_id,
             "message": [{"type": "text", "data": {"text": message}}],
@@ -43,7 +43,7 @@ class NapcatClient:
         :return bool: 服务存活状态
         """
         if self.is_closed:
-            raise ClientIsClosedException
+            raise ClientIsClosedException("Client is closed.")
         resp = await self.client.post("/get_stats")
         resp.raise_for_status()
         data = GetStatusResponse.model_validate_json(resp.content)
