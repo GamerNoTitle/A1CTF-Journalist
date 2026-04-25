@@ -6,14 +6,16 @@ import json
 from datetime import datetime
 from utils.logger import log
 
-from models.napcat import SendGroupMsgResponse, GetStatusResponse
-from models.platform import (
+from napcat.models import SendGroupMsgResponse, GetStatusResponse
+from napcat.client import NapcatClient
+from platform.client import PlatformClient
+from platform.models import (
     Notice,
     NoticeResponse,
     CaptchaResponse,
     CaptchaSubmitResponse,
     LoginResponse,
-    Challenges,
+    Challenge,
     ChallengeResponse,
 )
 
@@ -21,34 +23,25 @@ from utils.captcha import solve_challenge
 
 ENV = dotenv.load_dotenv()
 
-NAPCAT_URL = os.getenv("NAPCAT_URL")
-PLATFORM_URL = os.getenv("PLATFORM_URL")
-PLATFORM_LISTENING_GAME_ID = os.getenv("PLATFORM_LISTENING_GAME_ID")
 PLATFORM_NOTICE_URL = f"{PLATFORM_URL}/api/game/{PLATFORM_LISTENING_GAME_ID}/notices"
-PLATFORM_CHALLENGES_URL = f"{PLATFORM_URL}/api/game/{PLATFORM_LISTENING_GAME_ID}/challenges"
+PLATFORM_CHALLENGES_URL = (
+    f"{PLATFORM_URL}/api/game/{PLATFORM_LISTENING_GAME_ID}/challenges"
+)
 
-NC_TOKEN = os.getenv("NAPCAT_TOKEN")
-PLATFORM_USERNAME = os.getenv("PLATFORM_USERNAME")
-PLATFORM_PASSWORD = os.getenv("PLATFORM_PASSWORD")
-PLATFORM_COOKIE = os.getenv("PLATFORM_COOKIE")
 
 TARGET_GROUPS = json.loads(os.getenv("TARGET_GROUPS"))  # type: ignore
 
-GLOBAL_BOT_CLIENT = httpx.AsyncClient(
-    headers={
-        "User-Agent": "A1CTF-Journalist/1.0",
-        "Authorization": f"Bearer {NC_TOKEN}",
-    }
+NAPCAT_CLIENT = NapcatClient(os.getenv("NAPCAT_URL"), os.getenv("NAPCAT_TOKEN"))  # type: ignore
+PLATFORM_CIENT = PlatformClient(
+    os.getenv("PLATFORM_URL"),  # type: ignore
+    os.getenv("PLATFORM_LISTENING_GAME_ID"),    # type: ignore
+    os.getenv("PLATFORM_USERNAME"),
+    os.getenv("PLATFORM_PASSWORD"),
+    os.getenv("PLATFORM_COOKIE"),
 )
 
-GLOBAL_PLATFORM_CLIENT = httpx.AsyncClient(
-    headers={
-        "User-Agent": "A1CTF-Journalist/1.0",
-        "Cookie": PLATFORM_COOKIE,  # type: ignore
-    }
-)
+challenges: list[Challenge] = []
 
-challenges: list[Challenges] = []
 
 async def send_group_message(group_id: str, message: str) -> bool:
     """
@@ -69,6 +62,7 @@ async def send_group_message(group_id: str, message: str) -> bool:
         data = SendGroupMsgResponse.model_validate(resp.json())
         if data.status != "ok":
             import traceback
+
             traceback.print_exc()
             log(f"Failed to send group message: {data.data.errMsg}")
             return False
@@ -102,7 +96,7 @@ async def fetch_notices() -> list[Notice]:
     :return: 公告列表
     """
     try:
-        resp = await GLOBAL_PLATFORM_CLIENT.get(PLATFORM_NOTICE_URL)
+        resp = await PLATFORM_CLIENT.get(PLATFORM_NOTICE_URL)
         match resp.status_code:
             case 403:
                 log(
@@ -129,13 +123,14 @@ async def fetch_notices() -> list[Notice]:
         log(f"Failed to fetch notices: {e}")
         return []
 
+
 async def sync_challenges() -> bool:
     """
     同步平台上的挑战列表
     :return: 同步是否成功
     """
     try:
-        resp = await GLOBAL_PLATFORM_CLIENT.get(PLATFORM_CHALLENGES_URL)
+        resp = await PLATFORM_CLIENT.get(PLATFORM_CHALLENGES_URL)
         resp.raise_for_status()
         data = ChallengeResponse.model_validate(resp.json())
         global challenges
@@ -144,9 +139,11 @@ async def sync_challenges() -> bool:
         return True
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         log(f"Failed to sync challenges: {e}")
         return False
+
 
 def check_unread_notice(notices: list[Notice]) -> list[Notice]:
     """
@@ -174,7 +171,9 @@ async def send_unread_notices_to_groups(unread_notices: list[Notice]) -> None:
         if notice.notice_category in ["FirstBlood", "SecondBlood", "ThirdBlood"]:
             # Check if the challenge is in the synced challenges list
             challenge_name = notice.data[1]
-            matched_challenge = next((c for c in challenges if c.challenge_name == challenge_name), None)
+            matched_challenge = next(
+                (c for c in challenges if c.challenge_name == challenge_name), None
+            )
             if matched_challenge:
                 notice.category = matched_challenge.category
             else:
@@ -210,7 +209,7 @@ async def check_platform_cookie_valid() -> bool:
     """
     log("Checking Platform cookie validity...")
     try:
-        resp = await GLOBAL_PLATFORM_CLIENT.get(f"{PLATFORM_URL}/api/account/profile")
+        resp = await PLATFORM_CLIENT.get(f"{PLATFORM_URL}/api/account/profile")
         resp.raise_for_status()
         if resp.status_code == 200:
             log("Platform cookie is valid.")
@@ -247,7 +246,7 @@ async def login_platform():
         captcha_submit_response = CaptchaSubmitResponse.model_validate(resp.json())
         if not captcha_submit_response.success or not captcha_submit_response.token:
             raise RuntimeError("Failed to solve CAPTCHA and login to Platform")
-        resp = await GLOBAL_PLATFORM_CLIENT.post(
+        resp = await PLATFORM_CLIENT.post(
             f"{PLATFORM_URL}/api/auth/login",
             json={
                 "username": PLATFORM_USERNAME,
@@ -260,7 +259,7 @@ async def login_platform():
         login_response = LoginResponse.model_validate(resp.json())
         if login_response.code != 200:
             raise RuntimeError(f"Failed to login to Platform: {login_response.message}")
-        GLOBAL_PLATFORM_CLIENT.headers["Cookie"] = f"a1token={login_response.token}"
+        PLATFORM_CLIENT.headers["Cookie"] = f"a1token={login_response.token}"
         # Set new cookie to .env and replace old one
         with open(".env", "r") as f:
             lines = f.readlines()
