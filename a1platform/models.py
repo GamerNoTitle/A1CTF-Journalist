@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, UUID4
 from typing import Literal, Optional
 from datetime import datetime, timezone
 
@@ -30,7 +30,9 @@ class Notice(BaseModel):
             case "NewAnnouncement":
                 return f"📢 新公告发布：\n标题: {'\n'.join(self.data)}\n时间: {ts}"
             case "NewHint":
-                return f"💡 题目「{self.data[0]}」发布了新提示，请前往平台查看\n时间: {ts}"
+                return (
+                    f"💡 题目「{self.data[0]}」发布了新提示，请前往平台查看\n时间: {ts}"
+                )
 
     def __repr__(self) -> str:
         return f"Notice(notice_id={self.notice_id}, notice_category={self.notice_category}, created_at={self.create_time}, data={self.data})"
@@ -65,6 +67,7 @@ class LoginResponse(BaseModel):
     token: str | None = Field(None)
     message: str | None = Field(None)
 
+
 class Challenge(BaseModel):
     challenge_id: int
     challenge_name: str
@@ -74,10 +77,93 @@ class Challenge(BaseModel):
     category: str
     visible: bool
     belong_stage: Optional[str] = Field("")
-    
+
+
 class ChallengesData(BaseModel):
     challenges: list[Challenge]
-    
+
+
 class ChallengeResponse(BaseModel):
     code: int
     data: ChallengesData
+
+
+class ScoreboardTimelineDot(BaseModel):
+    record_time: datetime
+    score: int
+
+
+class ScoreboardTimeline(BaseModel):
+    team_id: int
+    team_name: str
+    scores: list[ScoreboardTimelineDot]
+
+
+class ScoreboardTeamMember(BaseModel):
+    avatar: str | None
+    user_name: str
+    user_id: UUID4
+    captain: bool
+
+
+class ScoreboardSolvedChallenge(BaseModel):
+    challenge_id: int
+    score: int
+    solver: str
+    rank: int
+    solve_time: datetime
+    blood_reward: int
+    challenge_name: str
+
+
+class ScoreboardScoreAdjustment(BaseModel):
+    adjustment_id: int
+    adjustment_type: str
+    score_change: int
+    reason: str
+    created_at: datetime
+
+
+class ScoreboardTeam(BaseModel):
+    team_id: int
+    team_name: str
+    team_avatar: str | None
+    team_slogan: str
+    team_members: list[ScoreboardTeamMember]
+    team_description: str
+    rank: int
+    score: int
+    penalty: int
+    group_id: UUID4 | None
+    group_name: str | None
+    solved_challenges: list[ScoreboardSolvedChallenge]
+    score_adjustments: list[ScoreboardScoreAdjustment]
+    last_solve_time: int
+
+
+class ScoreboardPagination(BaseModel):
+    current_page: int
+    page_size: int
+    total_count: int
+    total_pages: int
+
+
+class ScoreboardData(BaseModel):
+    game_id: int
+    name: str
+    top10_timelines: list[ScoreboardTimeline]
+    teams: list[ScoreboardTeam]
+    team_timelines: ScoreboardTimeline
+    challenges: list[Challenge]
+    groups: list[str]
+    pagination: ScoreboardPagination
+
+
+class ScoreboardResponse(BaseModel):
+    code: int
+    data: ScoreboardData
+
+
+class Scoreboard(BaseModel):
+    board: ScoreboardData | None
+    last_updated: datetime | None

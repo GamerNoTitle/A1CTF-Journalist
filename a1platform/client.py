@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from httpx import AsyncClient
 
 from a1platform.exception import (
@@ -16,6 +18,8 @@ from a1platform.models import (
     LoginResponse,
     ChallengeResponse,
     NoticeResponse,
+    ScoreboardResponse,
+    Scoreboard,
 )
 from a1platform.models import Challenge as A1CTF_Challenges
 from utils.captcha import solve_challenge
@@ -29,9 +33,12 @@ class PlatformClient:
         username: str | None = None,
         password: str | None = None,
         cookie: str | None = None,
+        cache_duration: int = 300,  # 5 mins
     ):
         if not all([username, password]) and not cookie:
-            raise CredentialsNotSatisfiedException("You must provide username and password, or a valid cookie.")
+            raise CredentialsNotSatisfiedException(
+                "You must provide username and password, or a valid cookie."
+            )
         if all([username, password]):
             self.credential_set = True
         else:
@@ -42,6 +49,8 @@ class PlatformClient:
         self.password = password
         self.cookie = cookie
         self.challenges: list[A1CTF_Challenges] = []
+        self.cache_duration = cache_duration
+        self.scoreboard: Scoreboard = Scoreboard(board=None, last_updated=None)
 
     @property
     def notice_url(self) -> str:
@@ -67,16 +76,26 @@ class PlatformClient:
     def login_url(self) -> str:
         return "/api/auth/login"
 
+    @property
+    def rank_url(self) -> str:
+        return f"/api/game/{self.game_id}/scoreboard?page=1&page_size=10000"
+
     async def match_status(self, status_code: int):
         match status_code:
             case 200:
                 return
             case 403:
-                raise NoPermissionException("You do not have permission to access this resource.")
+                raise NoPermissionException(
+                    "You do not have permission to access this resource."
+                )
             case 404:
-                raise GameNotFoundException("The specified game was not found. Please check the game ID.")
+                raise GameNotFoundException(
+                    "The specified game was not found. Please check the game ID."
+                )
             case 401:
-                raise UnauthorizedAccessException("You are not authorized to access this resource.")
+                raise UnauthorizedAccessException(
+                    "You are not authorized to access this resource."
+                )
             case _:
                 raise PlatformException(f"Unexpected response code: {status_code}")
 
@@ -135,3 +154,17 @@ class PlatformClient:
         notices = NoticeResponse.model_validate_json(resp.content)
         await self.match_status(notices.code)
         return notices.data
+
+    async def fetch_scoreboard(self):
+        if (
+            isinstance(self.scoreboard.last_updated, datetime)
+            and (datetime.now() - self.scoreboard.last_updated).total_seconds()
+            < self.cache_duration
+        ):
+            return self.scoreboard.board  # 在缓存期限内，不刷新
+        resp = await self.client.get(self.rank_url)
+        self.scoreboard.last_updated = datetime.now()
+        scoreboard = ScoreboardResponse.model_validate_json(resp.content)
+        await self.match_status(scoreboard.code)
+        self.scoreboard.board = scoreboard.data
+        return self.scoreboard.board
