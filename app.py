@@ -5,6 +5,7 @@ import json
 from utils.logger import log
 
 from napcat.client import NapcatClient
+from napcat.exception import ClientIsClosedException, NapcatException
 from a1platform.client import PlatformClient
 from storage import NoticeStorage
 
@@ -35,19 +36,30 @@ async def launcher():
     except Exception as e:
         log(f"[-] Failed to load config and cache: {e}")
     while True:
-        notices = await PLATFORM_CLIENT.fetch_notice()
-        if notices == NOTICE_STORAGE.notices.notices:
-            await asyncio.sleep(5)
-        else:
-            log("[*] New notices found! Preparing to send message...")
-            for notice in notices:
-                for group in TARGET_GROUPS:
-                    log(f"[*] Sending notice message {str(notice)} to group {group}...")
-                    try:
-                        NAPCAT_CLIENT.send_group_msg(
-                            group,
-                            str(notice)
-                        )
+        try:
+            notices = await PLATFORM_CLIENT.fetch_notice()
+            if notices == NOTICE_STORAGE.notices.notices:
+                await asyncio.sleep(5)
+            else:
+                log("[*] New notices found! Preparing to send message...")
+                for notice in notices:
+                    for group in TARGET_GROUPS:
+                        log(f"[*] Sending notice message {str(notice)} to group {group}...")
+                        try:
+                            await NAPCAT_CLIENT.send_group_msg(
+                                group,
+                                str(notice)
+                            )
+                        except ClientIsClosedException:
+                            global NAPCAT_CLIENT
+                            log("[*] Napcat client is closed. Attempting to reconnect...")
+                            NAPCAT_CLIENT = NapcatClient(os.getenv("NAPCAT_URL"), os.getenv("NAPCAT_TOKEN"))  # type: ignore
+                        except NapcatException:
+                            log("[*] Failed to send message to Napcat. Will retry in the next loop.")
+        except KeyboardInterrupt:
+            log("[*] Keyboard interrupt received. Closing Napcat client and exiting...")
+            await NAPCAT_CLIENT.aclose()
+            break
 
 if __name__ == "__main__":
     asyncio.run(launcher())
