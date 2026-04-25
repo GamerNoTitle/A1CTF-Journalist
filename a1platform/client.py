@@ -30,8 +30,8 @@ class PlatformClient:
         password: str | None = None,
         cookie: str | None = None,
     ):
-        if not all([username, password]) or cookie:
-            raise CredentialsNotSatisfiedException("Either username and password or cookie must be provided, but not both.")
+        if not all([username, password]) and not cookie:
+            raise CredentialsNotSatisfiedException("You must provide username and password, or a valid cookie.")
         if all([username, password]):
             self.credential_set = True
         else:
@@ -82,7 +82,6 @@ class PlatformClient:
 
     async def _check_cookie_valid(self) -> bool:
         resp = await self.client.get(self.profile_url)
-        resp.raise_for_status()
         if resp.status_code == 200:
             return True
         return False

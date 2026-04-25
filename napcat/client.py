@@ -44,7 +44,7 @@ class NapcatClient:
         """
         if self.is_closed:
             raise ClientIsClosedException("Client is closed.")
-        resp = await self.client.post("/get_stats")
+        resp = await self.client.post("/get_status")
         resp.raise_for_status()
         data = GetStatusResponse.model_validate_json(resp.content)
         return data.status == "ok"

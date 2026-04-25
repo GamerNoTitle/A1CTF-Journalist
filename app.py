@@ -22,6 +22,7 @@ PLATFORM_CLIENT = PlatformClient(
 NOTICE_STORAGE = NoticeStorage("notices.json")
 
 async def launcher():
+    global NAPCAT_CLIENT, PLATFORM_CLIENT, NOTICE_STORAGE
     log("[+] Start launching A1CTF Journalist...")
     log(f"[*] Target groups: {','.join(TARGET_GROUPS)}")
     log("[*] Checkin Napcat service status...")
@@ -44,14 +45,14 @@ async def launcher():
                 log("[*] New notices found! Preparing to send message...")
                 for notice in notices:
                     for group in TARGET_GROUPS:
-                        log(f"[*] Sending notice message {str(notice)} to group {group}...")
+                        log(f"[*] Sending notice message {str(notice).replace('\n', '\\n')} to group {group}...")
                         try:
                             await NAPCAT_CLIENT.send_group_msg(
                                 group,
                                 str(notice)
                             )
+                            os._exit(0)
                         except ClientIsClosedException:
-                            global NAPCAT_CLIENT
                             log("[*] Napcat client is closed. Attempting to reconnect...")
                             NAPCAT_CLIENT = NapcatClient(os.getenv("NAPCAT_URL"), os.getenv("NAPCAT_TOKEN"))  # type: ignore
                         except NapcatException:
