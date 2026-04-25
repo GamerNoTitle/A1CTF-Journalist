@@ -1,11 +1,13 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Literal, Any
 
 
 class SendGroupMsgRespData(BaseModel):
-    result: int | None = Field(None)
-    errMsg: str | None = Field(None)
-    message_id: str | int | None = Field(None)
+    # result: int | None = Field(None)
+    # errMsg: str | None = Field(None)
+    message_id: int | None = None
+    res_id: str | None = None
+    forward_id: str | None = None
 
 
 class SendGroupMsgResponse(BaseModel):
@@ -14,7 +16,7 @@ class SendGroupMsgResponse(BaseModel):
     data: SendGroupMsgRespData
     message: str
     wording: str
-    echo: str
+    echo: str | None = None
 
 
 class GetStatusRespData(BaseModel):
