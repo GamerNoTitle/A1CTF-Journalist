@@ -3,9 +3,9 @@ import dotenv
 import os
 import json
 import uvicorn
-from threading import Thread
 from fastapi import FastAPI, WebSocket
 from typing import Any
+from contextlib import asynccontextmanager
 
 from utils.logger import log
 from napcat.client import NapcatWebsocketServer
@@ -14,10 +14,36 @@ from storage import NoticeStorage
 from router import Router
 from context.constant import HELP_MSG, RANK_MAPPING, ABOUT_MSG
 
-APPLICATION = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    log("[+] Start launching A1CTF Journalist...")
+    
+    try:
+        NOTICE_STORAGE.load()
+        log("[*] Successfully loaded config and cache.")
+    except Exception as e:
+        log(f"[-] Failed to load config and cache: {e}")
+
+    notice_task = asyncio.create_task(notice_check())
+    log("[*] Background notice_check task started.")
+
+    yield 
+
+    log("[+] Shutting down A1CTF Journalist...")
+    
+    notice_task.cancel()
+    try:
+        await notice_task
+    except asyncio.CancelledError:
+        log("[*] Background notice_check task cancelled.")
+
+
+APPLICATION = FastAPI(lifespan=lifespan)
 NAPCAT_SERVER = NapcatWebsocketServer()
 
 ENV = dotenv.load_dotenv()
+HOST = os.getenv("HOST", "127.0.0.1")
+PORT = int(os.getenv("PORT", "8000"))
 try:
     TARGET_GROUPS = json.loads(os.getenv("TARGET_GROUPS"))  # type: ignore
 except Exception as e:
@@ -48,14 +74,18 @@ async def rank_handler(params: str, context: dict[str, Any]) -> str:  # type: ig
     start = -1
     end = -1
     if not params:
+        log("[*] No parameters provided for !!rank command, defaulting to top 10")
         limit = 10
     elif params.isdigit():
+        log(f"[*] Numeric parameter provided for !!rank command: {params}, treating as limit")
         limit = int(params)
     elif ":" in params:
+        log(f"[*] Range parameter provided for !!rank command: {params}, treating as start:end")
         try:
             start_str, end_str = params.split(":")
             start = int(start_str)
             end = int(end_str)
+            log(f"[*] Parsed start: {start}, end: {end} for !!rank command")
         except ValueError:
             return "参数格式错误！请使用 !!help 获取帮助"
     # 获取排行榜数据
@@ -68,8 +98,17 @@ async def rank_handler(params: str, context: dict[str, Any]) -> str:  # type: ig
         top_teams = scoreboard.teams[:limit]
         result = f"排行榜前 {limit} 名的队伍：\n"
         for idx, team in enumerate(top_teams, start=1):
-            result += f"{RANK_MAPPING.get(team.rank, idx + 1)} {team.team_name} - {team.score} pts\n"
+            result += f"{RANK_MAPPING.get(team.rank, idx)} {team.team_name} - {team.score} pts\n"
         return result
+    elif start != -1 and end != -1:
+        if start < 1 or end > len(scoreboard.teams) or start > end:
+            return "排名范围参数错误！请使用 !!help 获取帮助"
+        result = f"排行榜第 {start} 名到第 {end} 名的队伍：\n"
+        for team in scoreboard.teams[start-1:end]:
+            result += f"{RANK_MAPPING.get(team.rank, team.rank)} {team.team_name} - {team.score} pts\n"
+        return result
+    else:
+        return "参数错误！请使用 !!help 获取帮助"
 
 
 @router.register("!!challenge")
@@ -78,29 +117,26 @@ async def challenge_handler(params: str, context: dict[str, Any]) -> str:  # typ
     log(f"[*] Received !!challenge command with params: {params}, context: {context}")
     challenges = await PLATFORM_CLIENT.fetch_challenges()
     if not challenges:
-        return "挑战数据暂不可用，请稍后再试！"
+        return "题目数据暂不可用，请稍后再试！"
     if params:
-        param_list = params.split(maxsplit=1)
-        if len(param_list) == 1 and param_list[0].lower() == "all":
+        if len(params) == 1 and params.lower() == "all":
             # 返回所有挑战的列表
-            result = "所有挑战列表：\n"
+            result = "所有题目列表：\n"
             for challenge in challenges:
-                result += f"[{challenge.category}]{challenge.challenge_name}: {challenge.cur_score} pts/{challenge.solve_count} solved\n"
+                result += f"[{challenge.category}] {challenge.challenge_name}: {challenge.cur_score} pts ({challenge.solve_count} solved)\n"
             return result
-        elif len(param_list) == 1:
+        else:
             # 根据参数模糊匹配挑战名称
             keyword = params.strip().lower()
             matched_challenges = [
                 c for c in challenges if keyword in c.challenge_name.lower()
             ]
             if not matched_challenges:
-                return f"未找到匹配 '{params}' 的挑战，请检查名称是否正确！"
-            result = f"匹配 '{params}' 的挑战列表：\n"
+                return f"未找到匹配「{params}」的题目，请检查名称是否正确！"
+            result = f"匹配「{params}」的题目列表：\n"
             for challenge in matched_challenges:
-                result += f"[{challenge.category}]{challenge.challenge_name}: {challenge.cur_score} pts/{challenge.solve_count} solved\n"
+                result += f"[{challenge.category}] {challenge.challenge_name}: {challenge.cur_score} pts ({challenge.solve_count} solved)\n"
             return result
-        else:
-            return "你未提供参数或提供了错误的参数！请使用 !!help 获取帮助"
 
 
 @router.register("!!team")
@@ -120,7 +156,7 @@ async def team_handler(params: str, context: dict[str, Any]) -> str:
         (t for t in scoreboard.teams if t.team_name.lower() == team_name.lower()), None
     )
     if not matched_team:
-        return f"未找到队伍 '{team_name}'，请检查名称是否正确！"
+        return f"未找到队伍「{team_name}」，请检查名称是否正确！"
     result = f"队伍 {matched_team.team_name} 当前得分：{matched_team.score} pts\n解题情况：\n"
     for solve in matched_team.solved_challenges:
         challenge_category = next(
@@ -154,7 +190,7 @@ async def websocket(ws: WebSocket):
         if str(group_id) not in TARGET_GROUPS:
             continue
         message_list = data.get("message", [])
-        # 如果正常获取到了消息内容
+        # 正常获取到了消息内容
         if message_list:
             parsed_message: list[str] = []
             for message in message_list:
@@ -175,22 +211,12 @@ async def websocket(ws: WebSocket):
                     raw_message=[
                         {"type": "reply", "data": {"id": message_id}},
                         {"type": "at", "data": {"qq": sender_id}},
+                        {"type": "text", "data": {"text": "\n"}},
                         {"type": "text", "data": {"text": result_message}},
                     ],
                 )
         await asyncio.sleep(0.1)
 
-
-async def launcher():
-    global PLATFORM_CLIENT, NOTICE_STORAGE
-    log("[+] Start launching A1CTF Journalist...")
-    log(f"[*] Target groups: {','.join(TARGET_GROUPS)}")
-    log("[*] Checkin Napcat service status...")
-    try:
-        NOTICE_STORAGE.load()
-        log("[*] Successfully loaded config and cache.")
-    except Exception as e:
-        log(f"[-] Failed to load config and cache: {e}")
 
 async def notice_check():
     global PLATFORM_CLIENT, NOTICE_STORAGE
@@ -216,7 +242,4 @@ async def notice_check():
         await asyncio.sleep(10)  # 每 10 秒检查一次
 
 if __name__ == "__main__":
-    asyncio.run(launcher())
-    notice_thread = Thread(target=lambda: asyncio.run(notice_check()), daemon=True)
-    notice_thread.start()
-    uvicorn.run(APPLICATION, host="0.0.0.0", port=8000)
+    uvicorn.run(APPLICATION, host=HOST, port=PORT)

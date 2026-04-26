@@ -158,7 +158,7 @@ class ScoreboardData(BaseModel):
     name: str
     top10_timelines: list[ScoreboardTimeline]
     teams: list[ScoreboardTeam]
-    team_timelines: ScoreboardTimeline
+    team_timelines: list[ScoreboardTimeline]
     challenges: list[Challenge]
     groups: list[str]
     pagination: ScoreboardPagination
