@@ -4,7 +4,7 @@ A1CTF 战地记者！一个监听 A1CTF 平台特定比赛的通知并发送到 
 
 ## 前置条件
 
-- 一个 QQ 号，并已接入 [Napcat](https://napcat.napneko.icu/)，Napcat 需要开启 HTTP 服务器
+- 一个 QQ 号，并已接入 [Napcat](https://napcat.napneko.icu/)
 - 一个 [A1CTF](https://github.com/carbofish/A1CTF) 的已参赛的账号（可以是管理员，管理员不要求参赛），要能获取到 Notice 的那种
 
 ## 快速开始
@@ -16,7 +16,7 @@ $ git clone https://github.com/GamerNoTitle/A1CTF-Journalist.git
 $ cd A1CTF-Journalist
 $ docker build . -t gamernotitle/a1ctf-journalist
 $ docker run --name a1ctf-journalist \
-	--port 8000:8000 \
+  --port 8000:8000 \
   -e PLATFORM_URL=YOUR_PLATFORM_URL_HERE \
   -e PLATFORM_LISTENING_GAME_ID=YOUR_GAMEID_HERE \
   -e PLATFORM_USERNAME=YOUR_USERNAME_HERE \
