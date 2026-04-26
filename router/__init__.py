@@ -1,15 +1,21 @@
+import inspect
 from typing import Any, Callable, Dict, Union, Awaitable
 
 from a1platform.client import PlatformClient
 from napcat.client import NapcatWebsocketServer
 
 HandlerReturn = Union[str, None]
-Handler = Callable[[str, Dict[str, Any]], Union[HandlerReturn, Awaitable[HandlerReturn]]]
+Handler = Callable[
+    [str, Dict[str, Any]], Union[HandlerReturn, Awaitable[HandlerReturn]]
+]
+
 
 class Router:
     handlers: dict[str, Handler]
 
-    def __init__(self, platform: PlatformClient, napcat: NapcatWebsocketServer, *prefixes: str) -> None:
+    def __init__(
+        self, platform: PlatformClient, napcat: NapcatWebsocketServer, *prefixes: str
+    ) -> None:
         self.handlers = {}
         self.platform = platform
         self.napcat = napcat
@@ -47,7 +53,7 @@ class Router:
         if handler:
             try:
                 result = handler(params, context)
-                if isinstance(result, Awaitable):
+                if inspect.isawaitable(result):
                     return await result
                 else:
                     return result

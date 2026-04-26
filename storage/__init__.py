@@ -29,7 +29,7 @@ class NoticeStorage:
     def save(self):
         with open(self.path, "w") as f:
             f.write(self.notices.model_dump_json(indent=4))
-            
+
     def is_seen(self, notice_id: int) -> bool:
         return any(notice.notice_id == notice_id for notice in self.notices.notices)
 

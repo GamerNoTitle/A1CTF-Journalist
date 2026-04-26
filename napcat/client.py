@@ -65,7 +65,7 @@ class NapcatWebsocketServer:
 
     async def get_status(self):
         await self._send_command("get_status", {})
-        resp = await self.connection.receive_json() # type: ignore
+        resp = await self.connection.receive_json()  # type: ignore
         data = GetStatusResponse.model_validate_json(json.dumps(resp))
         return data.status == "ok"
 

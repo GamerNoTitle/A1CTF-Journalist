@@ -15,10 +15,11 @@ from storage import NoticeStorage
 from router import Router
 from context.constant import HELP_MSG, RANK_MAPPING, ABOUT_MSG
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log("[+] Start launching A1CTF Journalist...")
-    
+
     try:
         NOTICE_STORAGE.load()
         log("[*] Successfully loaded config and cache.")
@@ -28,10 +29,10 @@ async def lifespan(app: FastAPI):
     notice_task = asyncio.create_task(notice_check())
     log("[*] Background notice_check task started.")
 
-    yield 
+    yield
 
     log("[+] Shutting down A1CTF Journalist...")
-    
+
     notice_task.cancel()
     try:
         await notice_task
@@ -56,7 +57,9 @@ USERNAME: str = os.getenv("PLATFORM_USERNAME", "")
 PASSWORD: str = os.getenv("PLATFORM_PASSWORD", "")
 COOKIE: str = os.getenv("PLATFORM_COOKIE", "")
 if BASE_URL == "" or GAME_ID == "":
-    raise PlatformException("PLATFORM_URL and PLATFORM_LISTENING_GAME_ID must be set in environment variables.")
+    raise PlatformException(
+        "PLATFORM_URL and PLATFORM_LISTENING_GAME_ID must be set in environment variables."
+    )
 PLATFORM_CLIENT = PlatformClient(
     BASE_URL,
     GAME_ID,
@@ -84,10 +87,14 @@ async def rank_handler(params: str, context: dict[str, Any]) -> str:
         log("[*] No parameters provided for !!rank command, defaulting to top 10")
         limit = 10
     elif params.isdigit():
-        log(f"[*] Numeric parameter provided for !!rank command: {params}, treating as limit")
+        log(
+            f"[*] Numeric parameter provided for !!rank command: {params}, treating as limit"
+        )
         limit = int(params)
     elif ":" in params:
-        log(f"[*] Range parameter provided for !!rank command: {params}, treating as start:end")
+        log(
+            f"[*] Range parameter provided for !!rank command: {params}, treating as start:end"
+        )
         try:
             start_str, end_str = params.split(":")
             start = int(start_str)
@@ -106,13 +113,13 @@ async def rank_handler(params: str, context: dict[str, Any]) -> str:
         result = f"排行榜前 {limit} 名的队伍：\n"
         for idx, team in enumerate(top_teams, start=1):
             result += f"{RANK_MAPPING.get(team.rank, idx)} {team.team_name} - {team.score} pts\n"
-        result += f"\n上次更新时间：{PLATFORM_CLIENT.scoreboard_cache.last_updated.strftime('%Y-%m-%d %H:%M:%S') if PLATFORM_CLIENT.scoreboard_cache.last_updated else '未知'}" 
+        result += f"\n上次更新时间：{PLATFORM_CLIENT.scoreboard_cache.last_updated.strftime('%Y-%m-%d %H:%M:%S') if PLATFORM_CLIENT.scoreboard_cache.last_updated else '未知'}"
         return result
     elif start != -1 and end != -1:
         if start < 1 or end > len(scoreboard.teams) or start > end:
             return "排名范围参数错误！请使用 !!help 获取帮助"
         result = f"排行榜第 {start} 名到第 {end} 名的队伍：\n"
-        for team in scoreboard.teams[start-1:end]:
+        for team in scoreboard.teams[start - 1 : end]:
             result += f"{RANK_MAPPING.get(team.rank, team.rank)} {team.team_name} - {team.score} pts\n"
         result += f"\n上次更新时间：{PLATFORM_CLIENT.scoreboard_cache.last_updated.strftime('%Y-%m-%d %H:%M:%S') if PLATFORM_CLIENT.scoreboard_cache.last_updated else '未知'}"
         return result
@@ -247,6 +254,7 @@ async def notice_check():
         except Exception as e:
             log(f"[-] Error while checking notices: {e}")
         await asyncio.sleep(10)  # 每 10 秒检查一次
+
 
 if __name__ == "__main__":
     uvicorn.run(APPLICATION, host=HOST, port=PORT)
