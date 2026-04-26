@@ -7,7 +7,7 @@ from fastapi import FastAPI, WebSocket
 from typing import Any
 
 from utils.logger import log
-from napcat.client import NapcatClient, NapcatWebsocketServer
+from napcat.client import NapcatWebsocketServer
 from a1platform.client import PlatformClient
 from storage import NoticeStorage
 from router import Router
@@ -21,7 +21,6 @@ try:
     TARGET_GROUPS = json.loads(os.getenv("TARGET_GROUPS"))  # type: ignore
 except Exception as e:
     TARGET_GROUPS = os.getenv("TARGET_GROUPS", "").split(",")  # type: ignore
-NAPCAT_CLIENT = NapcatClient(os.getenv("NAPCAT_URL"), os.getenv("NAPCAT_TOKEN"))  # type: ignore
 PLATFORM_CLIENT = PlatformClient(
     os.getenv("PLATFORM_URL"),  # type: ignore
     os.getenv("PLATFORM_LISTENING_GAME_ID"),  # type: ignore
@@ -127,9 +126,7 @@ async def team_handler(params: str, context: dict[str, Any]) -> str:
             (c.category for c in challenges if c.challenge_id == solve.challenge_id),
             "未知类别",
         )
-        result += (
-            f"- [{challenge_category}] {solve.challenge_name} ({solve.score} pts for No.{solve.rank} solve)\n"
-        )
+        result += f"- [{challenge_category}] {solve.challenge_name} ({solve.score} pts for No.{solve.rank} solve)\n"
     return result
 
 
@@ -184,15 +181,10 @@ async def websocket(ws: WebSocket):
 
 
 async def launcher():
-    global NAPCAT_CLIENT, PLATFORM_CLIENT, NOTICE_STORAGE
+    global PLATFORM_CLIENT, NOTICE_STORAGE
     log("[+] Start launching A1CTF Journalist...")
     log(f"[*] Target groups: {','.join(TARGET_GROUPS)}")
     log("[*] Checkin Napcat service status...")
-    if not await NAPCAT_CLIENT.check_alive():
-        log("[*] Napcat service is not alive. Please check the connection.")
-        return
-    else:
-        log("[*] Napcat is alive and responsible, loading config and previous cache...")
     try:
         NOTICE_STORAGE.load()
         log("[*] Successfully loaded config and cache.")
