@@ -1,0 +1,15 @@
+FROM python:3.13-slim
+
+ENV NAPCAT_URL="http://127.0.0.1:3000"
+ENV NAPCAT_TOKEN="CHANGE_ME"
+ENV PLATFORM_URL="http://127.0.0.1:8080"
+ENV PLATFORM_LISTENING_GAME_ID="1"
+ENV PLATFORM_USERNAME="ctf"
+ENV PLATFORM_PASSWORD="CHANGEME"
+ENV TARGET_GROUPS="114514,1919810"
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["python", "app.py"]

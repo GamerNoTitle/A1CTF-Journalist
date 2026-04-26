@@ -17,7 +17,10 @@ APPLICATION = FastAPI()
 NAPCAT_SERVER = NapcatWebsocketServer()
 
 ENV = dotenv.load_dotenv()
-TARGET_GROUPS = json.loads(os.getenv("TARGET_GROUPS"))  # type: ignore
+try:
+    TARGET_GROUPS = json.loads(os.getenv("TARGET_GROUPS"))  # type: ignore
+except Exception as e:
+    TARGET_GROUPS = os.getenv("TARGET_GROUPS", "").split(",")  # type: ignore
 NAPCAT_CLIENT = NapcatClient(os.getenv("NAPCAT_URL"), os.getenv("NAPCAT_TOKEN"))  # type: ignore
 PLATFORM_CLIENT = PlatformClient(
     os.getenv("PLATFORM_URL"),  # type: ignore
