@@ -26,8 +26,9 @@ class Router:
 
         return callback
 
-    async def feed(self, command: str, context: Dict[str, Any]) -> None:
+    async def feed(self, command: str, context: Dict[str, Any]) -> None | str:
         for prefix, handler in self.handlers.items():
+            params = ""
             if command.startswith(prefix):
                 params = command[len(prefix) :]
             try:

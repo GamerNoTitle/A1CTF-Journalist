@@ -49,6 +49,8 @@ class NapcatWebsocketServer:
         message: str | None = None,
         raw_message: list[dict[str, Any]] | None = None,
     ):
+        if not message and not raw_message:
+            raise ValueError("Either 'message' or 'raw_message' must be provided.")
         await self._send_command(
             "send_group_msg",
             {

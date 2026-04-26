@@ -29,6 +29,9 @@ class NoticeStorage:
     def save(self):
         with open(self.path, "w") as f:
             f.write(self.notices.model_dump_json(indent=4))
+            
+    def is_seen(self, notice_id: int) -> bool:
+        return any(notice.notice_id == notice_id for notice in self.notices.notices)
 
     def __repr__(self):
         return f"NoticeStorage(path={self.path}, notices={self.notices})"
@@ -40,7 +43,7 @@ if __name__ == "__main__":
         notice_id=1,
         notice_category="FirstBlood",
         data=["Team A", "Challenge X"],
-        create_time="2025-08-15T02:00:16.975239Z",
+        create_time="2025-08-15T02:00:16.975239Z",  # type: ignore
         category="Pwn",
     )
     storage.notices.append(notice)

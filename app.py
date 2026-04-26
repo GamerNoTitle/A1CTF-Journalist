@@ -3,6 +3,7 @@ import dotenv
 import os
 import json
 import uvicorn
+from threading import Thread
 from fastapi import FastAPI, WebSocket
 from typing import Any
 
@@ -191,7 +192,31 @@ async def launcher():
     except Exception as e:
         log(f"[-] Failed to load config and cache: {e}")
 
+async def notice_check():
+    global PLATFORM_CLIENT, NOTICE_STORAGE
+    while True:
+        try:
+            log("[*] Checking for new notices...")
+            new_notices = await PLATFORM_CLIENT.fetch_notice()
+            if new_notices:
+                for notice in new_notices:
+                    if not NOTICE_STORAGE.is_seen(notice.notice_id):
+                        log(f"[*] New notice found: {notice}")
+                        NOTICE_STORAGE.notices.append(notice)
+                        await NAPCAT_SERVER.send_group_msg(
+                            group_id=TARGET_GROUPS[0],  # type: ignore
+                            message=str(notice),
+                        )
+                NOTICE_STORAGE.save()
+                NOTICE_STORAGE.load()  # 刷新内存中的数据，确保状态一致
+            else:
+                log("[*] No new notices found.")
+        except Exception as e:
+            log(f"[-] Error while checking notices: {e}")
+        await asyncio.sleep(10)  # 每 10 秒检查一次
 
 if __name__ == "__main__":
     asyncio.run(launcher())
+    notice_thread = Thread(target=lambda: asyncio.run(notice_check()), daemon=True)
+    notice_thread.start()
     uvicorn.run(APPLICATION, host="0.0.0.0", port=8000)
