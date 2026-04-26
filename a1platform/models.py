@@ -83,6 +83,11 @@ class ChallengesData(BaseModel):
     challenges: list[Challenge]
 
 
+class ChallengeCache(BaseModel):
+    challenges: list[Challenge] | None
+    last_updated: datetime | None
+
+
 class ChallengeResponse(BaseModel):
     code: int
     data: ChallengesData
@@ -164,6 +169,6 @@ class ScoreboardResponse(BaseModel):
     data: ScoreboardData
 
 
-class Scoreboard(BaseModel):
+class ScoreboardCache(BaseModel):
     board: ScoreboardData | None
     last_updated: datetime | None

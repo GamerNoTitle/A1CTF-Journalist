@@ -3,6 +3,7 @@
 提供 `log(message, level="INFO")` 接口并支持同时输出到控制台和文件。
 默认输出格式：`[YYYY-MM-DD HH:MM:SS] LEVEL message`。
 """
+
 from __future__ import annotations
 
 import logging
@@ -33,7 +34,9 @@ ch.setFormatter(formatter)
 _logger.addHandler(ch)
 
 # File handler with rotation
-fh = RotatingFileHandler(LOG_FILE, maxBytes=MAX_BYTES, backupCount=BACKUP_COUNT, encoding="utf-8")
+fh = RotatingFileHandler(
+    LOG_FILE, maxBytes=MAX_BYTES, backupCount=BACKUP_COUNT, encoding="utf-8"
+)
 fh.setLevel(logging.DEBUG)
 fh.setFormatter(formatter)
 _logger.addHandler(fh)
@@ -76,4 +79,3 @@ def warning(message: Any) -> None:
 
 def error(message: Any) -> None:
     log(message, level="ERROR")
-

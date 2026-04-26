@@ -10,3 +10,8 @@ dependencies = [
     "httpx>=0.28.1",
     "pydantic>=2.12.4",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.12",
+]

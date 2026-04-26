@@ -17,11 +17,11 @@ from a1platform.models import (
     CaptchaSubmitResponse,
     LoginResponse,
     ChallengeResponse,
+    ChallengeCache,
     NoticeResponse,
     ScoreboardResponse,
-    Scoreboard,
+    ScoreboardCache,
 )
-from a1platform.models import Challenge as A1CTF_Challenges
 from utils.captcha import solve_challenge
 
 
@@ -48,9 +48,13 @@ class PlatformClient:
         self.username = username
         self.password = password
         self.cookie = cookie
-        self.challenges: list[A1CTF_Challenges] = []
+        self.challenges_cache: ChallengeCache = ChallengeCache(
+            challenges=None, last_updated=None
+        )
         self.cache_duration = cache_duration
-        self.scoreboard: Scoreboard = Scoreboard(board=None, last_updated=None)
+        self.scoreboard_cache: ScoreboardCache = ScoreboardCache(
+            board=None, last_updated=None
+        )
 
     @property
     def notice_url(self) -> str:
@@ -139,13 +143,21 @@ class PlatformClient:
             raise LoginFailedException(f"Login failed: {login_response.message}")
         self.client.cookies.update({"a1token": login_response.token})  # type: ignore
 
-    async def _sync_challenges(self):
+    async def fetch_challenges(self):
         if not await self._check_cookie_valid():
             await self._login_platform()
+        if (
+            self.challenges_cache.last_updated
+            and (datetime.now() - self.challenges_cache.last_updated).total_seconds()
+            < self.cache_duration
+        ):
+            return self.challenges_cache.challenges  # 在缓存期限内，不刷新
         resp = await self.client.get(self.challenge_url)
         await self.match_status(resp.status_code)
         data = ChallengeResponse.model_validate_json(resp.content)
-        self.challenges = data.data.challenges
+        self.challenges_cache.challenges = data.data.challenges
+        self.challenges_cache.last_updated = datetime.now()
+        return data.data.challenges
 
     async def fetch_notice(self):
         if not await self._check_cookie_valid():
@@ -157,14 +169,14 @@ class PlatformClient:
 
     async def fetch_scoreboard(self):
         if (
-            isinstance(self.scoreboard.last_updated, datetime)
-            and (datetime.now() - self.scoreboard.last_updated).total_seconds()
+            isinstance(self.scoreboard_cache.last_updated, datetime)
+            and (datetime.now() - self.scoreboard_cache.last_updated).total_seconds()
             < self.cache_duration
         ):
-            return self.scoreboard.board  # 在缓存期限内，不刷新
+            return self.scoreboard_cache.board  # 在缓存期限内，不刷新
         resp = await self.client.get(self.rank_url)
-        self.scoreboard.last_updated = datetime.now()
+        self.scoreboard_cache.last_updated = datetime.now()
         scoreboard = ScoreboardResponse.model_validate_json(resp.content)
         await self.match_status(scoreboard.code)
-        self.scoreboard.board = scoreboard.data
-        return self.scoreboard.board
+        self.scoreboard_cache.board = scoreboard.data
+        return self.scoreboard_cache.board
