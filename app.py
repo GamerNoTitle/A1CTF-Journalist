@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from utils.logger import log
 from napcat.client import NapcatWebsocketServer
 from a1platform.client import PlatformClient
+from a1platform.exception import PlatformException
 from storage import NoticeStorage
 from router import Router
 from context.constant import HELP_MSG, RANK_MAPPING, ABOUT_MSG
@@ -44,31 +45,37 @@ NAPCAT_SERVER = NapcatWebsocketServer()
 ENV = dotenv.load_dotenv()
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "8000"))
-try:
-    TARGET_GROUPS = json.loads(os.getenv("TARGET_GROUPS"))  # type: ignore
-except Exception as e:
-    TARGET_GROUPS = os.getenv("TARGET_GROUPS", "").split(",")  # type: ignore
+raw_target_groups = os.getenv("TARGET_GROUPS", "")
+if raw_target_groups.startswith("[") and raw_target_groups.endswith("]"):
+    target_groups: list[str] = json.loads(raw_target_groups)
+else:
+    target_groups: list[str] = os.getenv("TARGET_GROUPS", "").split(",")
+BASE_URL: str = os.getenv("PLATFORM_URL", "")
+GAME_ID: str = os.getenv("PLATFORM_LISTENING_GAME_ID", "")
+USERNAME: str = os.getenv("PLATFORM_USERNAME", "")
+PASSWORD: str = os.getenv("PLATFORM_PASSWORD", "")
+COOKIE: str = os.getenv("PLATFORM_COOKIE", "")
+if BASE_URL == "" or GAME_ID == "":
+    raise PlatformException("PLATFORM_URL and PLATFORM_LISTENING_GAME_ID must be set in environment variables.")
 PLATFORM_CLIENT = PlatformClient(
-    os.getenv("PLATFORM_URL"),  # type: ignore
-    os.getenv("PLATFORM_LISTENING_GAME_ID"),  # type: ignore
-    os.getenv("PLATFORM_USERNAME"),
-    os.getenv("PLATFORM_PASSWORD"),
-    os.getenv("PLATFORM_COOKIE"),
+    BASE_URL,
+    GAME_ID,
+    USERNAME,
+    PASSWORD,
+    COOKIE,
 )
 NOTICE_STORAGE = NoticeStorage("notices.json")
-router = Router(PLATFORM_CLIENT, NAPCAT_SERVER)
+router = Router(PLATFORM_CLIENT, NAPCAT_SERVER, "!!", "！！")
 
 
-@router.register("!!help")
-@router.register("!!h")
+@router.register("help", "h")
 def help_handler(params: str, context: dict[str, Any]) -> str:
     log(f"[*] Received !!help command with params: {params}, context: {context}")
     return HELP_MSG
 
 
-@router.register("!!rank")
-@router.register("!!r")
-async def rank_handler(params: str, context: dict[str, Any]) -> str:  # type: ignore
+@router.register("rank", "r")
+async def rank_handler(params: str, context: dict[str, Any]) -> str:
     log(f"[*] Received !!rank command with params: {params}, context: {context}")
     limit = -1
     start = -1
@@ -99,6 +106,7 @@ async def rank_handler(params: str, context: dict[str, Any]) -> str:  # type: ig
         result = f"排行榜前 {limit} 名的队伍：\n"
         for idx, team in enumerate(top_teams, start=1):
             result += f"{RANK_MAPPING.get(team.rank, idx)} {team.team_name} - {team.score} pts\n"
+        result += f"\n上次更新时间：{PLATFORM_CLIENT.scoreboard_cache.last_updated.strftime('%Y-%m-%d %H:%M:%S') if PLATFORM_CLIENT.scoreboard_cache.last_updated else '未知'}" 
         return result
     elif start != -1 and end != -1:
         if start < 1 or end > len(scoreboard.teams) or start > end:
@@ -106,25 +114,25 @@ async def rank_handler(params: str, context: dict[str, Any]) -> str:  # type: ig
         result = f"排行榜第 {start} 名到第 {end} 名的队伍：\n"
         for team in scoreboard.teams[start-1:end]:
             result += f"{RANK_MAPPING.get(team.rank, team.rank)} {team.team_name} - {team.score} pts\n"
+        result += f"\n上次更新时间：{PLATFORM_CLIENT.scoreboard_cache.last_updated.strftime('%Y-%m-%d %H:%M:%S') if PLATFORM_CLIENT.scoreboard_cache.last_updated else '未知'}"
         return result
     else:
         return "参数错误！请使用 !!help 获取帮助"
 
 
-@router.register("!!challenge")
-@router.register("!!c")
-async def challenge_handler(params: str, context: dict[str, Any]) -> str:  # type: ignore
+@router.register("challenge", "c")
+async def challenge_handler(params: str, context: dict[str, Any]) -> str:
     log(f"[*] Received !!challenge command with params: {params}, context: {context}")
     challenges = await PLATFORM_CLIENT.fetch_challenges()
     if not challenges:
         return "题目数据暂不可用，请稍后再试！"
     if params:
-        if len(params) == 1 and params.lower() == "all":
+        params.strip()
+        if params.lower() == "all":
             # 返回所有挑战的列表
             result = "所有题目列表：\n"
             for challenge in challenges:
                 result += f"[{challenge.category}] {challenge.challenge_name}: {challenge.cur_score} pts ({challenge.solve_count} solved)\n"
-            return result
         else:
             # 根据参数模糊匹配挑战名称
             keyword = params.strip().lower()
@@ -136,11 +144,11 @@ async def challenge_handler(params: str, context: dict[str, Any]) -> str:  # typ
             result = f"匹配「{params}」的题目列表：\n"
             for challenge in matched_challenges:
                 result += f"[{challenge.category}] {challenge.challenge_name}: {challenge.cur_score} pts ({challenge.solve_count} solved)\n"
-            return result
+        result += f"\n上次更新时间：{PLATFORM_CLIENT.challenges_cache.last_updated.strftime('%Y-%m-%d %H:%M:%S') if PLATFORM_CLIENT.challenges_cache.last_updated else '未知'}"
+    return "参数错误！请使用 !!help 获取帮助"
 
 
-@router.register("!!team")
-@router.register("!!t")
+@router.register("team", "t")
 async def team_handler(params: str, context: dict[str, Any]) -> str:
     log(f"[*] Received !!team command with params: {params}, context: {context}")
     if not params:
@@ -167,7 +175,7 @@ async def team_handler(params: str, context: dict[str, Any]) -> str:
     return result
 
 
-@router.register("!!about")
+@router.register("about")
 def about_handler(params: str, context: dict[str, Any]) -> str:
     log(f"[*] Received !!about command with params: {params}, context: {context}")
     return ABOUT_MSG
@@ -187,7 +195,7 @@ async def websocket(ws: WebSocket):
         )
         if sender_id == -1 or message_id == -1 or group_id == -1:
             continue
-        if str(group_id) not in TARGET_GROUPS:
+        if str(group_id) not in target_groups:
             continue
         message_list = data.get("message", [])
         # 正常获取到了消息内容
@@ -219,7 +227,6 @@ async def websocket(ws: WebSocket):
 
 
 async def notice_check():
-    global PLATFORM_CLIENT, NOTICE_STORAGE
     while True:
         try:
             log("[*] Checking for new notices...")
@@ -230,7 +237,7 @@ async def notice_check():
                         log(f"[*] New notice found: {notice}")
                         NOTICE_STORAGE.notices.append(notice)
                         await NAPCAT_SERVER.send_group_msg(
-                            group_id=TARGET_GROUPS[0],  # type: ignore
+                            group_id=target_groups[0],  # type: ignore
                             message=str(notice),
                         )
                 NOTICE_STORAGE.save()
