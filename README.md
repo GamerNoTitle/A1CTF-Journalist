@@ -16,23 +16,25 @@ $ git clone https://github.com/GamerNoTitle/A1CTF-Journalist.git
 $ cd A1CTF-Journalist
 $ docker build . -t gamernotitle/a1ctf-journalist
 $ docker run --name a1ctf-journalist \
-  --port 8000:8000 \
+  -p 8000:8000 \
   -e PLATFORM_URL=YOUR_PLATFORM_URL_HERE \
   -e PLATFORM_LISTENING_GAME_ID=YOUR_GAMEID_HERE \
   -e PLATFORM_USERNAME=YOUR_USERNAME_HERE \
   -e PLATFORM_PASSWORD=YOUR_PASSWORD_HERE \
+  -e TARGET_GROUPS="114514,1919810" \
   gamernotitle/a1ctf-journalist
 ```
 
-| 变量名                     | 说明                           | 必填   | 默认值      |
-| -------------------------- | ------------------------------ | ------ | ----------- |
-| HOST                       | 监听的地址                     | ✕      | `127.0.0.1` |
-| PORT                       | 监听的端口                     | ✕      | `8000`      |
-| PLATFORM_URL               | A1CTF 平台地址                 | ✓      |             |
-| PLATFORM_LISTENING_GAME_ID | A1CTF 平台中要监听的比赛的 ID  | ✓      |             |
-| PLATFORM_USERNAME          | A1CTF 平台的登录账号           | 视情况 |             |
-| PLATFORM_PASSWORD          | A1CTF 平台的登录账号对应的密码 | 视情况 |             |
-| PLATFORM_COOKIE            | A1CTF 平台的 Cookie            | 视情况 |             |
+| 变量名                     | 说明                                   | 必填   | 默认值      |
+| -------------------------- | -------------------------------------- | ------ | ----------- |
+| HOST                       | 监听的地址                             | ✕      | `127.0.0.1` |
+| PORT                       | 监听的端口                             | ✕      | `8000`      |
+| PLATFORM_URL               | A1CTF 平台地址                         | ✓      |             |
+| PLATFORM_LISTENING_GAME_ID | A1CTF 平台中要监听的比赛的 ID          | ✓      |             |
+| PLATFORM_USERNAME          | A1CTF 平台的登录账号                   | 视情况 |             |
+| PLATFORM_PASSWORD          | A1CTF 平台的登录账号对应的密码         | 视情况 |             |
+| PLATFORM_COOKIE            | A1CTF 平台的 Cookie                    | 视情况 |             |
+| TARGET_GROUPS              | 接受以及发送消息的目标群组，用逗号分隔 | ✓      |             |
 
 其中，如果填写了 `PLATFORM_USERNAME` 和 `PLATFORM_PASSWORD` 的话，则会自动更新 Cookie，而无需再填入 `PLATFORM_COOKIE`；反之，如果只填写了 `PLATFORM_COOKIE`，则在 Cookie 有效期内可用，过期则需要重新更新 Cookie
 
