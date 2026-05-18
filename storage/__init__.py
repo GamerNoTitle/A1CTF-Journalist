@@ -23,8 +23,13 @@ class NoticeStorage:
         self.notices: NoticeFileStorage = NoticeFileStorage()
 
     def load(self):
-        with open(self.path, "r") as f:
-            self.notices = NoticeFileStorage.model_validate_json(f.read())
+        try:
+            with open(self.path, "r") as f:
+                self.notices = NoticeFileStorage.model_validate_json(f.read())
+        except FileNotFoundError:
+            self.notices = NoticeFileStorage()
+            with open(self.path, "w") as f:
+                f.write(self.notices.model_dump_json(indent=4))
 
     def save(self):
         with open(self.path, "w") as f:

@@ -40,7 +40,8 @@ class Notice(BaseModel):
 
 class NoticeResponse(BaseModel):
     code: int
-    data: list[Notice]
+    message: Optional[str] = None
+    data: Optional[list[Notice]] = None
 
 
 class CaptchaChallenge(BaseModel):

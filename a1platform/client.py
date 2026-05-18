@@ -84,21 +84,21 @@ class PlatformClient:
     def rank_url(self) -> str:
         return f"/api/game/{self.game_id}/scoreboard?page=1&page_size=10000"
 
-    async def match_status(self, status_code: int):
+    async def match_status(self, status_code: int, message: str | None):
         match status_code:
             case 200:
                 return
             case 403:
                 raise NoPermissionException(
-                    "You do not have permission to access this resource."
+                    "You do not have permission to access this resource." if not message else message
                 )
             case 404:
                 raise GameNotFoundException(
-                    "The specified game was not found. Please check the game ID."
+                    "The specified game was not found. Please check the game ID." if not message else message
                 )
             case 401:
                 raise UnauthorizedAccessException(
-                    "You are not authorized to access this resource."
+                    "You are not authorized to access this resource." if not message else message
                 )
             case _:
                 raise PlatformException(f"Unexpected response code: {status_code}")
@@ -164,7 +164,7 @@ class PlatformClient:
             await self._login_platform()
         resp = await self.client.get(self.notice_url)
         notices = NoticeResponse.model_validate_json(resp.content)
-        await self.match_status(notices.code)
+        await self.match_status(notices.code, notices.message)
         return notices.data
 
     async def fetch_scoreboard(self):
