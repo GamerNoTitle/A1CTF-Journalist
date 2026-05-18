@@ -167,7 +167,8 @@ class ScoreboardData(BaseModel):
 
 class ScoreboardResponse(BaseModel):
     code: int
-    data: ScoreboardData
+    message: Optional[str] = None
+    data: Optional[ScoreboardData] = None
 
 
 class ScoreboardCache(BaseModel):

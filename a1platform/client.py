@@ -177,6 +177,6 @@ class PlatformClient:
         resp = await self.client.get(self.rank_url)
         self.scoreboard_cache.last_updated = datetime.now()
         scoreboard = ScoreboardResponse.model_validate_json(resp.content)
-        await self.match_status(scoreboard.code)
+        await self.match_status(scoreboard.code, scoreboard.message)
         self.scoreboard_cache.board = scoreboard.data
         return self.scoreboard_cache.board
