@@ -84,7 +84,7 @@ class PlatformClient:
     def rank_url(self) -> str:
         return f"/api/game/{self.game_id}/scoreboard?page=1&page_size=10000"
 
-    async def match_status(self, status_code: int, message: str | None):
+    async def match_status(self, status_code: int, message: str | None = None):
         match status_code:
             case 200:
                 return
