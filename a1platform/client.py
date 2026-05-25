@@ -155,9 +155,11 @@ class PlatformClient:
         resp = await self.client.get(self.challenge_url)
         await self.match_status(resp.status_code)
         data = ChallengeResponse.model_validate_json(resp.content)
-        self.challenges_cache.challenges = data.data.challenges
-        self.challenges_cache.last_updated = datetime.now()
-        return data.data.challenges
+        if data.code == 200:
+            self.challenges_cache.challenges = data.data.challenges
+            self.challenges_cache.last_updated = datetime.now()
+            return data.data.challenges
+        raise PlatformException("Failed to fetch challenges.")
 
     async def fetch_notice(self):
         if not await self._check_cookie_valid():
@@ -177,6 +179,8 @@ class PlatformClient:
         resp = await self.client.get(self.rank_url)
         self.scoreboard_cache.last_updated = datetime.now()
         scoreboard = ScoreboardResponse.model_validate_json(resp.content)
+        if scoreboard.code != 200:
+            raise PlatformException("Failed to fetch scoreboard.")
         await self.match_status(scoreboard.code, scoreboard.message)
         self.scoreboard_cache.board = scoreboard.data
         return self.scoreboard_cache.board

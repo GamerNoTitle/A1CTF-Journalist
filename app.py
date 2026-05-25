@@ -103,7 +103,13 @@ async def rank_handler(params: str, context: dict[str, Any]) -> str:
         except ValueError:
             return "参数格式错误！请使用 !!help 获取帮助"
     # 获取排行榜数据
-    scoreboard = await PLATFORM_CLIENT.fetch_scoreboard()
+    try:
+        scoreboard = await PLATFORM_CLIENT.fetch_scoreboard()
+    except PlatformException:
+        return "排行榜数据暂不可用，请稍后再试！"
+    except Exception as e:
+        log(f"[-] Error fetching scoreboard: {e}")
+        return "获取排行榜数据时发生错误，请稍后再试！"
     if not scoreboard or not scoreboard.teams:
         return "排行榜数据暂不可用，请稍后再试！"
     # 根据参数返回对应的排行榜信息
@@ -130,7 +136,13 @@ async def rank_handler(params: str, context: dict[str, Any]) -> str:
 @router.register("challenge", "c")
 async def challenge_handler(params: str, context: dict[str, Any]) -> str:
     log(f"[*] Received !!challenge command with params: {params}, context: {context}")
-    challenges = await PLATFORM_CLIENT.fetch_challenges()
+    try:
+        challenges = await PLATFORM_CLIENT.fetch_challenges()
+    except PlatformException:
+        return "题目数据暂不可用，请稍后再试！"
+    except Exception as e:
+        log(f"[-] Error fetching challenges: {e}")
+        return "获取题目数据时发生错误，请稍后再试！"
     if not challenges:
         return "题目数据暂不可用，请稍后再试！"
     if params:
@@ -161,8 +173,14 @@ async def team_handler(params: str, context: dict[str, Any]) -> str:
     if not params:
         return "未提供队伍名称，请使用 !!help 获取帮助"
     team_name = params.strip()
-    scoreboard = await PLATFORM_CLIENT.fetch_scoreboard()
-    challenges = await PLATFORM_CLIENT.fetch_challenges()
+    try:
+        scoreboard = await PLATFORM_CLIENT.fetch_scoreboard()
+        challenges = await PLATFORM_CLIENT.fetch_challenges()
+    except PlatformException:
+        return "排行榜或题目数据暂不可用，请稍后再试！"
+    except Exception as e:
+        log(f"[-] Error fetching scoreboard or challenges: {e}")
+        return "获取排行榜或题目数据时发生错误，请稍后再试！"
     if not scoreboard or not scoreboard.teams:
         return "排行榜数据暂不可用，请稍后再试！"
     if not challenges:
