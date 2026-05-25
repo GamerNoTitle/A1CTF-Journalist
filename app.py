@@ -102,6 +102,11 @@ async def rank_handler(params: str, context: dict[str, Any]) -> str:
             log(f"[*] Parsed start: {start}, end: {end} for !!rank command")
         except ValueError:
             return "参数格式错误！请使用 !!help 获取帮助"
+    # 参数验证
+    if limit != -1 and limit <= 0:
+        return "排名数量参数必须是正整数！请使用 !!help 获取帮助"
+    if start != -1 and end != -1 and (start <= 0 or end <= 0 or start > end):
+        return "排名范围参数必须是正整数且起始排名不能大于结束排名！请使用 !!help 获取帮助"
     # 获取排行榜数据
     try:
         scoreboard = await PLATFORM_CLIENT.fetch_scoreboard()
