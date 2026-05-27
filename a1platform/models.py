@@ -102,7 +102,9 @@ class ScoreboardTimelineDot(BaseModel):
 class ScoreboardTimeline(BaseModel):
     team_id: int
     team_name: str
-    scores: list[ScoreboardTimelineDot]
+    scores: list[int]
+    times: list[int]
+    time_base: int
 
 
 class ScoreboardTeamMember(BaseModel):
@@ -159,7 +161,6 @@ class ScoreboardData(BaseModel):
     name: str
     top10_timelines: list[ScoreboardTimeline]
     teams: list[ScoreboardTeam]
-    team_timelines: list[ScoreboardTimeline]
     challenges: list[Challenge]
     groups: list[str]
     pagination: ScoreboardPagination

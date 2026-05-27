@@ -278,6 +278,20 @@ async def notice_check():
             log(f"[-] Error while checking notices: {e}")
         await asyncio.sleep(10)  # 每 10 秒检查一次
 
+async def test():
+    scoreboard = await PLATFORM_CLIENT.fetch_scoreboard()
+    challenges = await PLATFORM_CLIENT.fetch_challenges()
+    notices = await PLATFORM_CLIENT.fetch_notice()
+    print("Scoreboard:")
+    for team in scoreboard.teams:
+        print(f"- {team.team_name}: {team.score} pts")
+    print("\nChallenges:")
+    for challenge in challenges:
+        print(f"- {challenge.challenge_name} ({challenge.category}): {challenge.cur_score} pts")
+    print("\nNotices:")
+    for notice in notices:
+        print(f"- {notice.data[0]} (ID: {notice.notice_id})")
 
 if __name__ == "__main__":
+    # asyncio.run(test())
     uvicorn.run(APPLICATION, host=HOST, port=PORT)
