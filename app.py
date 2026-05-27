@@ -169,6 +169,7 @@ async def challenge_handler(params: str, context: dict[str, Any]) -> str:
             for challenge in matched_challenges:
                 result += f"[{challenge.category}] {challenge.challenge_name}: {challenge.cur_score} pts ({challenge.solve_count} solved)\n"
         result += f"\n上次更新时间：{PLATFORM_CLIENT.challenges_cache.last_updated.strftime('%Y-%m-%d %H:%M:%S') if PLATFORM_CLIENT.challenges_cache.last_updated else '未知'}"
+        return result
     return "参数错误！请使用 !!help 获取帮助"
 
 
