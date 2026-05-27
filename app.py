@@ -151,7 +151,7 @@ async def challenge_handler(params: str, context: dict[str, Any]) -> str:
     if not challenges:
         return "题目数据暂不可用，请稍后再试！"
     if params:
-        params.strip()
+        params = params.strip()
         if params.lower() == "all":
             # 返回所有挑战的列表
             result = "所有题目列表：\n"
