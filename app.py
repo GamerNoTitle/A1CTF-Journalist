@@ -267,10 +267,11 @@ async def notice_check():
                     if not NOTICE_STORAGE.is_seen(notice.notice_id):
                         log(f"[*] New notice found: {notice}")
                         NOTICE_STORAGE.notices.append(notice)
-                        await NAPCAT_SERVER.send_group_msg(
-                            group_id=target_groups[0],  # type: ignore
-                            message=str(notice),
-                        )
+                        for group_id in target_groups:
+                            await NAPCAT_SERVER.send_group_msg(
+                                group_id=group_id,
+                                message=str(notice),
+                            )
                 NOTICE_STORAGE.save()
                 NOTICE_STORAGE.load()  # 刷新内存中的数据，确保状态一致
             else:
