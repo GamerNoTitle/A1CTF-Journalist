@@ -269,7 +269,7 @@ async def notice_check():
                         NOTICE_STORAGE.notices.append(notice)
                         for group_id in target_groups:
                             await NAPCAT_SERVER.send_group_msg(
-                                group_id=group_id,
+                                group_id=int(group_id),
                                 message=str(notice),
                             )
                 NOTICE_STORAGE.save()
