@@ -24,19 +24,19 @@ class NoticeStorage:
 
     def load(self):
         try:
-            with open(self.path, "r") as f:
+            with open(self.path, "r", encoding="utf8") as f:
                 content = f.read().strip()
                 if not content:
                     raise ValueError("File is empty")
                 self.notices = NoticeFileStorage.model_validate_json(content)
         except (FileNotFoundError, ValueError):
             self.notices = NoticeFileStorage()
-            with open(self.path, "w") as f:
+            with open(self.path, "w", encoding="utf8") as f:
                 f.write(self.notices.model_dump_json(indent=4))
 
     def save(self):
         tmp_path = self.path.with_suffix(".tmp")
-        with open(tmp_path, "w") as f:
+        with open(tmp_path, "w", encoding="utf8") as f:
             f.write(self.notices.model_dump_json(indent=4))
         tmp_path.replace(self.path)
 

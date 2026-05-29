@@ -106,7 +106,9 @@ async def rank_handler(params: str, context: dict[str, Any]) -> str:
     if limit != -1 and limit <= 0:
         return "排名数量参数必须是正整数！请使用 !!help 获取帮助"
     if start != -1 and end != -1 and (start <= 0 or end <= 0 or start > end):
-        return "排名范围参数必须是正整数且起始排名不能大于结束排名！请使用 !!help 获取帮助"
+        return (
+            "排名范围参数必须是正整数且起始排名不能大于结束排名！请使用 !!help 获取帮助"
+        )
     # 获取排行榜数据
     try:
         scoreboard = await PLATFORM_CLIENT.fetch_scoreboard()
@@ -280,6 +282,7 @@ async def notice_check():
             log(f"[-] Error while checking notices: {e}")
         await asyncio.sleep(10)  # 每 10 秒检查一次
 
+
 async def test():
     scoreboard = await PLATFORM_CLIENT.fetch_scoreboard()
     challenges = await PLATFORM_CLIENT.fetch_challenges()
@@ -289,10 +292,13 @@ async def test():
         print(f"- {team.team_name}: {team.score} pts")
     print("\nChallenges:")
     for challenge in challenges:
-        print(f"- {challenge.challenge_name} ({challenge.category}): {challenge.cur_score} pts")
+        print(
+            f"- {challenge.challenge_name} ({challenge.category}): {challenge.cur_score} pts"
+        )
     print("\nNotices:")
     for notice in notices:
         print(f"- {notice.data[0]} (ID: {notice.notice_id})")
+
 
 if __name__ == "__main__":
     # asyncio.run(test())

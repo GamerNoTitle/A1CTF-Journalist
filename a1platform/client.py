@@ -90,15 +90,21 @@ class PlatformClient:
                 return
             case 403:
                 raise NoPermissionException(
-                    "You do not have permission to access this resource." if not message else message
+                    "You do not have permission to access this resource."
+                    if not message
+                    else message
                 )
             case 404:
                 raise GameNotFoundException(
-                    "The specified game was not found. Please check the game ID." if not message else message
+                    "The specified game was not found. Please check the game ID."
+                    if not message
+                    else message
                 )
             case 401:
                 raise UnauthorizedAccessException(
-                    "You are not authorized to access this resource." if not message else message
+                    "You are not authorized to access this resource."
+                    if not message
+                    else message
                 )
             case _:
                 raise PlatformException(f"Unexpected response code: {status_code}")
