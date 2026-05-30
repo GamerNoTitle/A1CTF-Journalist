@@ -129,9 +129,13 @@ async def rank_handler(params: str, context: dict[str, Any]) -> str:
         result += f"\n上次更新时间：{PLATFORM_CLIENT.scoreboard_cache.last_updated.strftime('%Y-%m-%d %H:%M:%S') if PLATFORM_CLIENT.scoreboard_cache.last_updated else '未知'}"
         return result
     elif start != -1 and end != -1:
-        if start < 1 or end > len(scoreboard.teams) or start > end:
+        if start < 1 or start > end:
             return "排名范围参数错误！请使用 !!help 获取帮助"
-        result = f"排行榜第 {start} 名到第 {end} 名的队伍：\n"
+        if end > len(scoreboard.teams):
+            result = f"排行榜第 {start} 名到第 {len(scoreboard.teams)} 名的队伍：\n"
+            end = len(scoreboard.teams)
+        else:
+            result = f"排行榜第 {start} 名到第 {end} 名的队伍：\n"
         for team in scoreboard.teams[start - 1 : end]:
             result += f"{RANK_MAPPING.get(team.rank, team.rank)} {team.team_name} - {team.score} pts\n"
         result += f"\n上次更新时间：{PLATFORM_CLIENT.scoreboard_cache.last_updated.strftime('%Y-%m-%d %H:%M:%S') if PLATFORM_CLIENT.scoreboard_cache.last_updated else '未知'}"
