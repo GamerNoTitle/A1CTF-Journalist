@@ -152,12 +152,12 @@ class PlatformClient:
     async def fetch_challenges(self):
         if not await self._check_cookie_valid():
             await self._login_platform()
-        if (
-            self.challenges_cache.last_updated
-            and (datetime.now() - self.challenges_cache.last_updated).total_seconds()
-            < self.cache_duration
-        ):
-            return self.challenges_cache.challenges  # 在缓存期限内，不刷新
+        # if (
+        #     self.challenges_cache.last_updated
+        #     and (datetime.now() - self.challenges_cache.last_updated).total_seconds()
+        #     < self.cache_duration
+        # ):
+        #     return self.challenges_cache.challenges  # 在缓存期限内，不刷新
         resp = await self.client.get(self.challenge_url)
         await self.match_status(resp.status_code)
         data = ChallengeResponse.model_validate_json(resp.content)
@@ -176,12 +176,12 @@ class PlatformClient:
         return notices.data
 
     async def fetch_scoreboard(self):
-        if (
-            isinstance(self.scoreboard_cache.last_updated, datetime)
-            and (datetime.now() - self.scoreboard_cache.last_updated).total_seconds()
-            < self.cache_duration
-        ):
-            return self.scoreboard_cache.board  # 在缓存期限内，不刷新
+        # if (
+        #     isinstance(self.scoreboard_cache.last_updated, datetime)
+        #     and (datetime.now() - self.scoreboard_cache.last_updated).total_seconds()
+        #     < self.cache_duration
+        # ):
+        #     return self.scoreboard_cache.board  # 在缓存期限内，不刷新
         resp = await self.client.get(self.rank_url)
         self.scoreboard_cache.last_updated = datetime.now()
         scoreboard = ScoreboardResponse.model_validate_json(resp.content)
